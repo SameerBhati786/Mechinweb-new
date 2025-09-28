@@ -9,7 +9,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-import { PaymentService } from '../../lib/payments';
 import { RealtimeService } from '../../lib/realtime';
 import { supabase } from '../../lib/supabase';
 
@@ -65,12 +64,30 @@ const PaymentsPage = () => {
 
   const loadPaymentData = async (userId: string) => {
     try {
-      const [ordersData, invoicesData] = await Promise.all([
-        PaymentService.getUserOrders(),
-        PaymentService.getUserInvoices()
-      ]);
-      setOrders(ordersData);
-      setInvoices(invoicesData);
+      // Load orders
+      const { data: ordersData } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          services (name, description, category)
+        `)
+        .eq('client_id', userId)
+        .order('created_at', { ascending: false });
+      
+      // Load invoices
+      const { data: invoicesData } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          orders (
+            services (name, description)
+          )
+        `)
+        .eq('client_id', userId)
+        .order('created_at', { ascending: false });
+      
+      setOrders(ordersData || []);
+      setInvoices(invoicesData || []);
     } catch (error) {
       console.error('Error loading payment data:', error);
     }

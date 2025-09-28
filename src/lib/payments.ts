@@ -2,6 +2,7 @@
 import { supabase } from './supabase';
 import { ServiceManager } from './services';
 import { ProductionLogger } from './productionLogger';
+import { convertCurrency } from '../utils/currency';
 
 export interface PaymentIntent {
   invoice_id: string;
@@ -384,9 +385,6 @@ export class PaymentService {
   // Calculate amounts in different currencies with error handling
   private static async calculateCurrencyAmounts(amount: number, currency: string) {
     try {
-      // Import currency utilities
-      const { convertCurrency } = await import('../utils/currency');
-      
       let usd = amount;
       let inr = amount;
       let aud = amount;
