@@ -509,14 +509,13 @@ export class DebugService {
 
 // Global debug functions for browser console
 (window as any).debugMechinweb = {
-  ...DebugService,
   // Quick access functions
   quickDiagnostic: () => DebugService.runFullDiagnostic(),
   checkProduction: () => DebugService.assessProductionReadiness(),
   repairSystem: () => DebugService.performSystemRepair(),
   
   // Individual test functions
-  testServices: () => DebugService.testServiceSystem(),
-  testZoho: () => DebugService.testZohoIntegration(),
-  testPayments: () => DebugService.testPaymentFlow()
+  testServices: () => DebugService['testServiceSystem'](),
+  testZoho: () => DebugService['testZohoIntegration'](),
+  testPayments: () => DebugService['testPaymentFlow']()
 };

@@ -4,7 +4,6 @@ import { ArrowLeft, Check, Shield, Clock, Users, Star, Home } from 'lucide-react
 import { supabase } from '../lib/supabase';
 import { ServiceManager, ServiceData } from '../lib/services';
 import { convertCurrency, formatCurrency, getPreferredCurrency, detectUserLocation } from '../utils/currency';
-import { PaymentService } from '../lib/payments';
 import ErrorBoundary from '../components/ErrorBoundary';
 import QuantitySelector from '../components/QuantitySelector';
 
@@ -144,8 +143,8 @@ export function ServicePurchase() {
         quantity
       });
       
-      // Create payment intent using enhanced PaymentService
-      const paymentIntent = await PaymentService.createPaymentIntent(
+      // Create payment intent directly
+      const paymentIntent = await createPaymentIntent(
         resolvedServiceId,
         selectedPackage,
         totalPrice,
@@ -169,6 +168,140 @@ export function ServicePurchase() {
       setError(`Failed to create payment: ${error.message}`);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const createPaymentIntent = async (
+    serviceId: string,
+    packageType: string,
+    totalPrice: number,
+    currency: string,
+    quantity: number
+  ) => {
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Get client profile
+      const { data: clientProfile } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (!clientProfile) throw new Error('Client profile not found');
+
+      // Calculate currency amounts
+      const amounts = await calculateCurrencyAmounts(totalPrice, currency);
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([{
+          client_id: user.id,
+          service_id: serviceId,
+          package_type: packageType,
+          amount_usd: amounts.usd,
+          amount_inr: amounts.inr,
+          amount_aud: amounts.aud,
+          currency: currency,
+          status: 'pending',
+          payment_gateway: 'zoho'
+        }])
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create Zoho invoice
+      const customerData = {
+        name: clientProfile.name,
+        email: clientProfile.email,
+        phone: clientProfile.phone || '',
+        company: clientProfile.company || ''
+      };
+
+      const serviceItems = [{
+        serviceId: serviceId,
+        serviceName: service?.name || 'Service',
+        packageType: packageType,
+        quantity: quantity,
+        unitPrice: totalPrice / quantity,
+        totalPrice: totalPrice
+      }];
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zoho-integration`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerData,
+          serviceItems,
+          currency: currency,
+          notes: `Order ID: ${order.id}`
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Payment creation failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Payment creation failed');
+      }
+
+      // Update order with Zoho details
+      await supabase
+        .from('orders')
+        .update({
+          zoho_invoice_id: result.invoice.invoice_id,
+          zoho_customer_id: result.customer.contact_id
+        })
+        .eq('id', order.id);
+
+      return {
+        invoice_id: result.invoice.invoice_id,
+        invoice_number: result.invoice.invoice_number,
+        payment_url: result.invoice.payment_url,
+        total: result.invoice.total,
+        status: result.invoice.status,
+        customer_id: result.customer.contact_id
+      };
+    } catch (error) {
+      log('error', 'Payment intent creation failed', { error: error.message });
+      throw error;
+    }
+  };
+
+  const calculateCurrencyAmounts = async (amount: number, currency: string) => {
+    try {
+      let usd = amount;
+      let inr = amount;
+      let aud = amount;
+
+      if (currency === 'USD') {
+        inr = await convertCurrency(amount, 'USD', 'INR');
+        aud = await convertCurrency(amount, 'USD', 'AUD');
+      } else if (currency === 'INR') {
+        usd = await convertCurrency(amount, 'INR', 'USD');
+        aud = await convertCurrency(amount, 'INR', 'AUD');
+      } else if (currency === 'AUD') {
+        usd = await convertCurrency(amount, 'AUD', 'USD');
+        inr = await convertCurrency(amount, 'AUD', 'INR');
+      }
+
+      return {
+        usd: parseFloat(usd.toFixed(2)),
+        inr: parseFloat(inr.toFixed(2)),
+        aud: parseFloat(aud.toFixed(2))
+      };
+    } catch (error) {
+      console.error('Currency conversion failed:', error);
+      return { usd: amount, inr: amount, aud: amount };
     }
   };
 

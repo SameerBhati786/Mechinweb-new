@@ -52,7 +52,7 @@ export default function ServicesPage() {
         
         for (const service of servicesData) {
           if (service.pricing) {
-            const servicePricing: any = {};
+              for (const [tier, price] of Object.entries(service.pricing as Record<string, number>)) {
             for (const [tier, price] of Object.entries(service.pricing)) {
               if (price && typeof price === 'number') {
                 servicePricing[tier] = await convertCurrency(price, 'USD', preferredCurrency);
@@ -80,9 +80,9 @@ export default function ServicesPage() {
   
   const getServicePricing = (service: ServiceData, tier: string) => {
     if (userCurrency === 'USD') {
-      return service.pricing?.[tier as keyof typeof service.pricing] || 0;
+      return (service.pricing as Record<string, number>)?.[tier] || 0;
     }
-    return convertedPricing[service.id]?.[tier] || service.pricing?.[tier as keyof typeof service.pricing] || 0;
+    return convertedPricing[service.id]?.[tier] || (service.pricing as Record<string, number>)?.[tier] || 0;
   };
 
   if (loading) {

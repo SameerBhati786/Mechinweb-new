@@ -97,7 +97,8 @@ const InvoicesPage = () => {
   ];
 
   const getStatusIcon = (status: string) => {
-    switch (status) {
+    const statusString = String(status);
+    switch (statusString) {
       case 'paid':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'sent':
@@ -110,7 +111,8 @@ const InvoicesPage = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const statusString = String(status);
+    switch (statusString) {
       case 'paid':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'sent':

@@ -55,7 +55,7 @@ const Services: React.FC = () => {
           for (const service of servicesData) {
             if (service.pricing) {
               const servicePricing: any = {};
-              for (const [tier, price] of Object.entries(service.pricing)) {
+              for (const [tier, price] of Object.entries(service.pricing as Record<string, number>)) {
                 if (price && typeof price === 'number') {
                   servicePricing[tier] = await convertCurrency(price, 'USD', currency);
                 }
@@ -79,16 +79,16 @@ const Services: React.FC = () => {
 
   const getServicePrice = (service: any, tier: string) => {
     if (userCurrency === 'USD') {
-      return service.pricing?.[tier] || 0;
+      return (service.pricing as Record<string, number>)?.[tier] || 0;
     }
-    return convertedPricing[service.id]?.[tier] || service.pricing?.[tier] || 0;
+    return convertedPricing[service.id]?.[tier] || (service.pricing as Record<string, number>)?.[tier] || 0;
   };
 
   const getLowestPrice = (service: any) => {
     const pricing = userCurrency === 'USD' ? service.pricing : convertedPricing[service.id];
     if (!pricing) return 0;
     
-    const prices = Object.values(pricing).filter(price => price && price > 0);
+    const prices = Object.values(pricing as Record<string, number>).filter(price => price && price > 0);
     return Math.min(...(prices as number[]));
   };
 

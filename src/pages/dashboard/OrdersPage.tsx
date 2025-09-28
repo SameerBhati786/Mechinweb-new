@@ -75,7 +75,8 @@ const OrdersPage = () => {
   };
 
   const getStatusColor = (status) => {
-    switch (status) {
+    const statusString = String(status);
+    switch (statusString) {
       case 'completed':
         return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'paid':
@@ -90,7 +91,8 @@ const OrdersPage = () => {
   };
 
   const getStatusIcon = (status) => {
-    switch (status) {
+    const statusString = String(status);
+    switch (statusString) {
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'paid':
