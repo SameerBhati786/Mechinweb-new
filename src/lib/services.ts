@@ -205,13 +205,30 @@ export class ServiceManager {
     try {
       this.log('info', 'Fetching all services from database');
       
+      // Use safe database operation with error handling
       const { data, error } = await supabase
         .from('services')
-        .select('*')
+        .select('id, name, description, category, pricing, features, created_at')
         .order('created_at', { ascending: false });
 
       if (error) {
         this.log('error', 'Database error fetching services', error);
+        
+        // Handle specific database errors
+        if (error.message?.includes('does not exist')) {
+          this.log('warn', 'Column missing in services table, using fallback query');
+          // Fallback query without updated_at
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('services')
+            .select('id, name, description, category, pricing, features, created_at');
+          
+          if (fallbackError) {
+            throw fallbackError;
+          }
+          
+          return fallbackData || [];
+        }
+        
         throw error;
       }
 

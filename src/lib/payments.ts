@@ -163,14 +163,23 @@ export class PaymentService {
 
       this.log('info', 'Creating order in database', { transactionId, orderData });
 
+      // Use safe database operation with error handling
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([orderData])
-        .select()
+        .select('id, client_id, service_id, package_type, amount_usd, amount_inr, amount_aud, currency, status, created_at')
         .single();
 
       if (orderError) {
         this.log('error', 'Order creation failed', { transactionId, orderError });
+        
+        // Handle specific database errors
+        if (orderError.message?.includes('does not exist')) {
+          throw new Error('Database schema error: Missing required columns. Please contact support.');
+        } else if (orderError.message?.includes('RI_ConstraintTrigger')) {
+          throw new Error('Database constraint error. Please try again or contact support.');
+        }
+        
         throw new Error(`Failed to create order: ${orderError.message}`);
       }
 
