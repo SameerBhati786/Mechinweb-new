@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { ServiceManager, ServiceData } from '../../lib/services';
 import { getPreferredCurrency, formatCurrency, convertCurrency } from '../../utils/currency';
-import ErrorBoundary from '../ErrorBoundary';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 const ServicesPage = () => {
   const [isVisible, setIsVisible] = useState(false);
